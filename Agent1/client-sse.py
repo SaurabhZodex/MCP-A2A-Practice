@@ -15,7 +15,6 @@ To run the server:
 uv run server.py
 """
 
-
 async def main():
     # Connect to the server using SSE
     async with sse_client("http://localhost:8050/sse") as (read_stream, write_stream):
