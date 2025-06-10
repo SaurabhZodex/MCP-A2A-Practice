@@ -5,7 +5,8 @@ load_dotenv("../.env")
 
 # Create an MCP server
 mcp = FastMCP(
-    name="Calculator",
+    name="add_numbers",
+    instructions="This server provides a tool to add two numbers together.",
     host="0.0.0.0",  # only used for SSE transport (localhost)
     port=8050,  # only used for SSE transport (set this to any port)
 )

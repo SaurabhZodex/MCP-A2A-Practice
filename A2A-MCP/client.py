@@ -1,23 +1,69 @@
-# from a2a.client import A2AClient, AgentCard
-from python_a2a import A2AClient, AgentCard
+import threading
+import time
+from mcp.server.fastmcp import FastMCP
+from dotenv import load_dotenv
+import python_a2a
 
-# 1) Discover Agent 1 by fetching its AgentCard
-agent_url = "http://localhost:9000"
-card = AgentCard.fetch(f"{agent_url}/.well-known/agent.json")
+# Define shared tools (must be at top level)
+def add(a: int, b: int) -> int:
+    """Add two numbers together"""
+    return a + b
 
-# 2) Create a client from that card
-client = A2AClient.from_agent_card(card)
+def square(a: int) -> int:
+    """Square number"""
+    return a * a
 
-# 3) Call the 'add' tool
-res_add = client.call_method(
-    method="add",
-    params={"a": 5, "b": 7},
-).result()
-print("5 + 7 =", res_add)  # → 12
+def run_agent(agent_name: str, port: int, other_port: int, other_alias: str):
+    """Start an MCP agent with tools and connect to another agent via A2A"""
+    # Create MCP instance
+    mcp_server = FastMCP(agent_name, port=port)
+    
+    # Register tools using the standard function registration
+    mcp_server.tool()(add)
+    mcp_server.tool()(square)
+    
+    # Start server in a daemon thread
+    server_thread = threading.Thread(
+        target=mcp_server.run,
+        daemon=True
+    )
+    server_thread.start()
+    
+    # Wait for server initialization
+    time.sleep(2)  
+    print(f"{agent_name} started on port {port}")
 
-# 4) Call the 'square' tool
-res_sq = client.call_method(
-    method="square",
-    params={"a": 4},
-).result()
-print("4² =", res_sq)     # → 16
+    # Connect to the other agent using A2A
+    print(f"{agent_name} connecting to {other_alias} at port {other_port}...")
+    python_a2a.connect(f"http://localhost:{other_port}", alias=other_alias)
+    print(f"{agent_name} successfully connected to {other_alias}")
+
+    # Keep agent running
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print(f"Shutting down {agent_name}")
+
+if __name__ == "__main__":
+    load_dotenv()  # Load environment variables
+
+    # Configure agents
+    agents = [
+        {"agent_name": "Agent1", "port": 8000, "other_port": 8001, "other_alias": "Agent2"},
+        {"agent_name": "Agent2", "port": 8001, "other_port": 8000, "other_alias": "Agent1"}
+    ]
+
+    # Start agents in separate threads
+    threads = []
+    for agent in agents:
+        t = threading.Thread(target=run_agent, kwargs=agent)
+        t.start()
+        threads.append(t)
+
+    # Wait for termination
+    try:
+        for t in threads:
+            t.join()
+    except KeyboardInterrupt:
+        print("Shutting down all agents")

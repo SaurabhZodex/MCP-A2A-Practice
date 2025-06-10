@@ -5,7 +5,8 @@ load_dotenv("../.env")
 
 # Create an MCP server
 mcp = FastMCP(
-    name="Calculator",
+    name="square_number",
+    instructions="This server provides a tool to square a number.",
     host="0.0.0.0",  # only used for SSE transport (localhost)
     port=8051,  # only used for SSE transport (set this to any port)
 )
