@@ -1,4 +1,4 @@
-from python_a2a import AgentNetwork, A2AClient, A2AMessage 
+from python_a2a import AgentNetwork, A2AClient 
 
 # Create a network of agents
 network = AgentNetwork(name="calculator_network")
@@ -22,12 +22,11 @@ for agent_info in network.list_agents():
         print(f"Description: {agent_info['description']}")
     print()
 
-# Create a message using A2AMessage instead of a raw dict
-message = A2AMessage(data={"a": 2})  # Check the correct constructor format
-
 agent = network.get_agent("square_number")
+
+# Try sending a raw dictionary with proper structure
 response = agent.ask({
-    "action": "square",
-    "input": {"a": 2}
+    "data": {"a": 2},  # Some agents expect a "data" field
+    # "action": "square",  # Uncomment if the agent needs an action
 })
 print(f"Response from square_number: {response}")
