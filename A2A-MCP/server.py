@@ -36,12 +36,12 @@ def divide(a: float, b: float) -> float:
 import threading
 
 # Define a function to run the server in a thread
-def run_server():
-    calculator_mcp.run(host="0.0.0.0", port=5001)
+# def run_server():
+calculator_mcp.run(host="0.0.0.0", port=5001)
 
 # Start the server in a background thread
-server_thread = threading.Thread(target=run_server, daemon=True)
-server_thread.start()
+# server_thread = threading.Thread(target=run_server, daemon=True)
+# server_thread.start()
 
 print("Calculator MCP server is running on http://0.0.0.0:5001")
 
