@@ -10,7 +10,7 @@ from groq import Groq
 from python_a2a import run_server, A2AServer, AgentCard, AgentSkill
 from python_a2a.mcp import FastMCP
 
-groq_client = Groq(api_key="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")
+groq_client = Groq(api_key="")
 
 # ---------------------- Utility Functions ----------------------
 def find_available_port(start_port=5000, max_tries=20):
