@@ -12,36 +12,40 @@ calculator_mcp = FastMCP(
 @calculator_mcp.tool()
 def add(a: float, b: float) -> float:
     """Add two numbers together."""
+    print(f"Adding {a} and {b}")
     return a + b
 
 @calculator_mcp.tool()
 def subtract(a: float, b: float) -> float:
     """Subtract b from a."""
+    print(f"Subtracting {b} from {a}")
     return a - b
 
 @calculator_mcp.tool()
 def multiply(a: float, b: float) -> float:
     """Multiply two numbers together."""
+    print(f"Multiplying {a} and {b}")
     return a * b
 
 @calculator_mcp.tool()
 def divide(a: float, b: float) -> float:
     """Divide a by b."""
+    print(f"Dividing {a} by {b}")
     if b == 0:
         return text_response("Cannot divide by zero")
     return a / b
 
 # For Jupyter Notebook, use this cell to start the server in a non-blocking way
 # This will run the server in a separate thread
-import threading
+# import threading
 
 # Define a function to run the server in a thread
-def run_server():
-    calculator_mcp.run(host="0.0.0.0", port=5001)
+# def run_server():
+calculator_mcp.run(host="0.0.0.0", port=5001)
 
-# Start the server in a background thread
-server_thread = threading.Thread(target=run_server, daemon=True)
-server_thread.start()
+# # Start the server in a background thread
+# server_thread = threading.Thread(target=run_server, daemon=True)
+# server_thread.start()
 
 print("Calculator MCP server is running on http://0.0.0.0:5001")
 

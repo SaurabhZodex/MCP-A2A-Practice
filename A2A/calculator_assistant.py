@@ -1,15 +1,15 @@
 # calculator_assistant.py
 
-from python_a2a import OpenAIA2AServer, A2AClient, Message, TextContent, MessageRole, run_server
+from python_a2a import OllamaA2AServer, OpenAIA2AServer, A2AClient, Message, TextContent, MessageRole, run_server
 import os
 from dotenv import load_dotenv
 
 
-class CalculatorAssistant(OpenAIA2AServer):
+class CalculatorAssistant(OllamaA2AServer):
     def __init__(self, api_key, calc_agent_url):
         super().__init__(
-            api_key=api_key,
-            model="gpt-3.5-turbo",
+            api_url="http://localhost:11434",  # Required for Ollama connection
+            model="gemma3:1b",
             system_prompt="You are a calculator assistant. You convert queries into arithmetic operations using specialized agents."
         )
         self.calc_client = A2AClient(calc_agent_url)
