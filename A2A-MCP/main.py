@@ -5,10 +5,12 @@ import time
 import threading
 import argparse
 from dotenv import load_dotenv
-
+from groq import Groq
 # python_a2a components
-from python_a2a import OpenAIA2AServer, run_server, A2AServer, AgentCard, AgentSkill
+from python_a2a import run_server, A2AServer, AgentCard, AgentSkill
 from python_a2a.mcp import FastMCP
+
+groq_client = Groq(api_key="")
 
 # ---------------------- Utility Functions ----------------------
 def find_available_port(start_port=5000, max_tries=20):
@@ -49,11 +51,11 @@ def parse_arguments():
 
 # ---------------------- Main Application ----------------------
 def main():
-    load_dotenv()
-    # Ensure API key
-    if "OPENAI_API_KEY" not in os.environ:
-        print("❌ Missing OPENAI_API_KEY environment variable.")
-        return 1
+    # load_dotenv()
+    # # Ensure API key
+    # if "OPENAI_API_KEY" not in os.environ:
+    #     print("❌ Missing OPENAI_API_KEY environment variable.")
+    #     return 1
 
     # Parse CLI
     args = parse_arguments()
@@ -114,16 +116,19 @@ def main():
     a2a_server = CalcA2AServer(agent_card, mcp_server)
 
     # Configure the underlying LLM
-    openai_backend = OpenAIA2AServer(
-        api_key=os.environ["OPENAI_API_KEY"],
-        model=args.model,
-        temperature=args.temperature,
-        system_prompt=(
-            "You are CalcAgent, able to call add(a,b) and square(a) tools via MCP."
-        )
+    groq_backend = groq_client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        temperature=0,
+        messages=[
+                {"role": "system", "content": "You are a helpful assistant that can call tools via MCP."},
+                {"role": "user", "content": "What is the sum of 3 and 5?"}
+        ]
     )
-    # Monkey-patch handle_message to the OpenAI backend
-    CalcA2AServer.handle_message = lambda self, msg: openai_backend.handle_message(msg)
+    # Extract response text
+    reply = groq_backend.choices[0].message.content.strip()
+
+    # # Monkey-patch handle_message to the OpenAI backend
+    CalcA2AServer.handle_message = lambda self, msg: groq_backend.handle_message(msg)
 
     # Start A2A in background
     def run_a2a(server, host="0.0.0.0", port=a2a_port):
