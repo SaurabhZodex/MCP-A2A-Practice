@@ -94,10 +94,12 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-duckduckgo_endpoint="http://192.168.0.106:5003"
+duckduckgo_endpoint="http://127.0.0.1:5003/a2a"
 duckduckgo_client = A2AClient(duckduckgo_endpoint)
 ticker_message = Message(
     content=TextContent(text=f"What's the ticker for Apple?"),
     role=MessageRole.USER
 )
-logger.info(duckduckgo_client.send_message(ticker_message))
+response = duckduckgo_client.send_message(ticker_message)
+logger.info(response)
+logger.info(response.content.text)
