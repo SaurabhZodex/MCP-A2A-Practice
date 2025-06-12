@@ -60,20 +60,20 @@ def interactive_session(client):
             response = client.send_message(message)
             print(f"Response received: {response}")
 
-            print(f"You: {user_input}")
+            print(f"\nYou: {user_input}")
             if response.content.type != "text":
                 print("Received non-text response, please try again.")
                 continue
 
             # Display the response
-            print(f"\nAssistant: {response.content.text}")
+            print(f"Assistant: {response.content.text}")
             
         except Exception as e:
             print(f"Error: {e}")
             print("Please try again or type 'exit' to quit.")
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Stock Assistant Client")
-    parser.add_argument("--endpoint", default="http://localhost:5000/a2a", 
+    parser.add_argument("--endpoint", default="http://localhost:5000/", 
                         help="Stock assistant endpoint URL")
     
     args = parser.parse_args()

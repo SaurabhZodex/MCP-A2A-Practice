@@ -105,5 +105,5 @@ class DuckDuckGoAgent(A2AServer, FastMCPAgent):
             conversation_id=message.conversation_id
         )
     
-logger.info("DuckDuckGo MCP Agent is running on http://0.0.0.0:5003/a2a")
+logger.info("DuckDuckGo MCP Agent is running on http://0.0.0.0:5003/")
 run_server(DuckDuckGoAgent(), port=5003)

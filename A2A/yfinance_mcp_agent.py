@@ -116,5 +116,5 @@ class YFinanceAgent(A2AServer, FastMCPAgent):
         )
 
 
-logger.info("YFinance MCP Agent is running on http://0.0.0.0:5004")
+logger.info("YFinance MCP Agent is running on http://0.0.0.0:5004/")
 run_server(YFinanceAgent(), port=5004)
