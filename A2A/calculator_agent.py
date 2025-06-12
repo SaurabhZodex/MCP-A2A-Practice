@@ -3,15 +3,27 @@
 from python_a2a import A2AServer, Message, TextContent, MessageRole, run_server
 from python_a2a.mcp import FastMCPAgent
 import re
+# Set up logging
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class CalculatorAgent(A2AServer, FastMCPAgent):
     def __init__(self):
         A2AServer.__init__(self)
-        FastMCPAgent.__init__(self, mcp_servers={"calc": "http://localhost:5001"})
+        FastMCPAgent.__init__(self, mcp_servers={"calc": "http://localhost:8050/sse"})
 
     async def handle_message_async(self, message):
         if message.content.type == "text":
             text = message.content.text.lower()
+            logger.info(f"Received message: {text}")
+            if not text:
+                return Message(
+                    content=TextContent(text="Please provide a valid arithmetic operation."),
+                    role=MessageRole.AGENT,
+                    parent_message_id=message.message_id,
+                    conversation_id=message.conversation_id
+                )
 
             try:
                 if "add" in text:
@@ -33,6 +45,7 @@ class CalculatorAgent(A2AServer, FastMCPAgent):
                         parent_message_id=message.message_id,
                         conversation_id=message.conversation_id
                     )
+                logger.info(f"Calculated result: {result}")
 
                 return Message(
                     content=TextContent(text=f"The result is {result}"),

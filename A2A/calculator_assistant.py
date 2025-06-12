@@ -3,6 +3,10 @@
 from python_a2a import OllamaA2AServer, OpenAIA2AServer, A2AClient, Message, TextContent, MessageRole, run_server
 import os
 from dotenv import load_dotenv
+# Set up logging
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class CalculatorAssistant(OllamaA2AServer):
@@ -22,7 +26,7 @@ class CalculatorAssistant(OllamaA2AServer):
     def _handle_calc_query(self, message):
         try:
             # Use OpenAI to extract arithmetic intent
-            openai_response = super().handle_message(
+            ollama_response = super().handle_message(
                 Message(
                     content=TextContent(
                         text=f"Convert the following into a basic operation (add, subtract, multiply, divide): '{message.content.text}'"
@@ -31,7 +35,7 @@ class CalculatorAssistant(OllamaA2AServer):
                 )
             )
 
-            operation_text = openai_response.content.text.strip()
+            operation_text = ollama_response.content.text.strip()
 
             # Forward to calculator agent
             response = self.calc_client.send_message(
@@ -40,6 +44,14 @@ class CalculatorAssistant(OllamaA2AServer):
                     role=MessageRole.USER
                 )
             )
+
+            logger.info(f"Received response from calculator agent: {response.content.text}")
+            logger.info(Message(
+                    content=TextContent(text=response.content.text),
+                    role=MessageRole.AGENT,
+                    parent_message_id=message.message_id,
+                    conversation_id=message.conversation_id
+                ))
 
             return Message(
                 content=TextContent(text=f"Result: {response.content.text}"),
@@ -67,6 +79,6 @@ if __name__ == "__main__":
 
     assistant = CalculatorAssistant(
         api_key=api_key,
-        calc_agent_url="http://localhost:5002/a2a"
+        calc_agent_url="http://localhost:5002/a2a"  # URL of the calculator agent MCP server
     )
     run_server(assistant, port=5000)
