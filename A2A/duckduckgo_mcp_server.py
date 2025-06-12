@@ -1,110 +1,114 @@
-# calculator_agent.py
+# # Import required libraries
+# from python_a2a.mcp import text_response
+# from mcp.server.fastmcp import FastMCP
 
-import threading
-from python_a2a import A2AServer, Message, TextContent, MessageRole, run_server
-from python_a2a.mcp import FastMCPAgent
-import re
 # Set up logging
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# class CalculatorAgent(A2AServer, FastMCPAgent):
-#     def __init__(self):
-#         A2AServer.__init__(self)
-#         FastMCPAgent.__init__(self, mcp_servers={"calc": "http://localhost:8050/sse"})
+# # Create a new MCP server
+# calculator_mcp = FastMCP(
+#     name="Calculator MCP",
+#     version="1.0.0",
+#     description="Provides mathematical calculation functions",
+#     host="0.0.0.0",  # only used for SSE transport (localhost)
+#     port=8050,  # only used for SSE transport (set this to any port)
+# )
 
-#     async def handle_message_async(self, message):
-#         if message.content.type == "text":
-#             text = message.content.text.lower()
-#             logger.info(f"Received message: {text}")
-#             if not text:
-#                 return Message(
-#                     content=TextContent(text="Please provide a valid arithmetic operation."),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
+# # Define tools using simple decorators with type hints
+# @calculator_mcp.tool()
+# def add(a: float, b: float) -> float:
+#     """Add two numbers together."""
+#     logger.info(f"Adding {a} and {b}")
+#     return a + b
 
-#             try:
-#                 if "add" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "add", a=a, b=b)
-#                 elif "subtract" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "subtract", a=a, b=b)
-#                 elif "multiply" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "multiply", a=a, b=b)
-#                 elif "divide" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "divide", a=a, b=b)
-#                 else:
-#                     return Message(
-#                         content=TextContent(text="Please use add, subtract, multiply, or divide."),
-#                         role=MessageRole.AGENT,
-#                         parent_message_id=message.message_id,
-#                         conversation_id=message.conversation_id
-#                     )
-#                 logger.info(f"Calculated result: {result}")
+# @calculator_mcp.tool()
+# def subtract(a: float, b: float) -> float:
+#     """Subtract b from a."""
+#     logger.info(f"Subtracting {b} from {a}")
+#     return a - b
 
-#                 return Message(
-#                     content=TextContent(text=f"The result is {result}"),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
-#             except Exception as e:
-#                 return Message(
-#                     content=TextContent(text=f"Error: {str(e)}"),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
+# @calculator_mcp.tool()
+# def multiply(a: float, b: float) -> float:
+#     """Multiply two numbers together."""
+#     logger.info(f"Multiplying {a} and {b}")
+#     return a * b
 
-# # Run server
-# run_server(CalculatorAgent(), port=5002)
+# @calculator_mcp.tool()
+# def divide(a: float, b: float) -> float:
+#     """Divide a by b."""
+#     logger.info(f"Dividing {a} by {b}")
+#     if b == 0:
+#         return text_response("Cannot divide by zero")
+#     return a / b
 
-# DuckDuckGo Agent for ticker lookup
-class DuckDuckGoAgent(A2AServer, FastMCPAgent):
-    """Agent that finds stock ticker symbols."""
+# # Example manual testing (optional)
+# logger.info("Testing add function: %s", add(5, 3))
+# logger.info("Testing subtract function: %s", subtract(10, 4))
+# logger.info("Testing multiply function: %s", multiply(6, 7))
+# logger.info("Testing divide function: %s", divide(20, 5))
+# logger.info("Testing divide by zero: %s", divide(10, 0))
+
+
+# # Start the MCP server
+# logger.info("Calculator MCP server is running on http://0.0.0.0:8050")
+# calculator_mcp.run(transport="sse")
+
+
+# Import all required libraries
+from python_a2a.mcp import FastMCP, text_response
+import threading
+import requests
+import re
+import yfinance as yf
+
+# DuckDuckGo MCP Server for ticker lookup
+duckduckgo_mcp = FastMCP(
+    name="DuckDuckGo MCP",
+    version="1.0.0",
+    description="Search capabilities for finding stock information"
+)
+
+@duckduckgo_mcp.tool()
+def search_ticker(company_name: str) -> str:
+    """Find stock ticker symbol for a company using DuckDuckGo search."""
+    # Implementation details (simplified)
+    logger.info(f"Searching for ticker symbol for {company_name}")
+    query = f"{company_name} stock ticker symbol"
+    url = f"https://api.duckduckgo.com/?q={query}&format=json"
+    response = requests.get(url)
+    data = response.json()
     
-    def __init__(self):
-        A2AServer.__init__(self)
-        FastMCPAgent.__init__(
-            self,
-            mcp_servers={"search": "http://localhost:5001"}
-        )
+    # Extract ticker from results
+    # Look for patterns like "NYSE: AAPL" or "NASDAQ: MSFT"
+    text = data.get("Abstract", "")
+    ticker_match = re.search(r'(?:NYSE|NASDAQ):\s*([A-Z]+)', text)
+    if ticker_match:
+        return ticker_match.group(1)
     
-    async def handle_message_async(self, message):
-        if message.content.type == "text":
-            logger.info(f"Received message: {message.content.text}")
-            # Extract company name from message
-            import re
-            company_match = re.search(r"ticker\s+(?:for|of)\s+([A-Za-z\s]+)", message.content.text, re.I)
-            if company_match:
-                company_name = company_match.group(1).strip()
-            else:
-                # Default to using the whole message
-                company_name = message.content.text.strip()
-            
-            # Call MCP tool to lookup ticker
-            ticker = await self.call_mcp_tool("search", "search_ticker", company_name=company_name)
-            
-            return Message(
-                content=TextContent(text=f"The ticker symbol for {company_name} is {ticker}."),
-                role=MessageRole.AGENT,
-                parent_message_id=message.message_id,
-                conversation_id=message.conversation_id
-            )
-        
-        # Handle other message types or errors
-        return Message(
-            content=TextContent(text="I can help find ticker symbols for companies."),
-            role=MessageRole.AGENT,
-            parent_message_id=message.message_id,
-            conversation_id=message.conversation_id
-        )
+    # Fall back to common tickers for demo purposes
+    if company_name.lower() == "apple":
+        return "AAPL"
+    elif company_name.lower() == "microsoft":
+        return "MSFT"
+    elif company_name.lower() == "google" or company_name.lower() == "alphabet":
+        return "GOOGL"
+    elif company_name.lower() == "amazon":
+        return "AMZN"
+    elif company_name.lower() == "tesla":
+        return "TSLA"
     
-logger.info("DuckDuckGo MCP Agent is running on http://0.0.0.0:5003/a2a/")
-run_server(DuckDuckGoAgent(), port=5003)
+    return f"Could not find ticker for {company_name}"
+
+# Example usage - you can run these in a separate cell to test
+# Test the DuckDuckGo ticker search
+logger.info("\nTesting ticker search:")
+companies = ["Apple", "Microsoft", "Amazon"]
+for company in companies:
+    ticker = search_ticker(company)
+    logger.info(f"{company} ticker: {ticker}")
+
+# For Jupyter Notebook, use threads to run both servers non-blocking
+logger.info("DuckDuckGo MCP server is running on http://0.0.0.0:5001")
+duckduckgo_mcp.run(host="0.0.0.0", port=5001)

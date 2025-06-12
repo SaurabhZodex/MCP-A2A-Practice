@@ -73,11 +73,11 @@ def interactive_session(client):
             print("Please try again or type 'exit' to quit.")
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Stock Assistant Client")
-    parser.add_argument("--endpoint", default="http://localhost:5000", 
+    parser.add_argument("--endpoint", default="http://localhost:5000/a2a", 
                         help="Stock assistant endpoint URL")
     
     args = parser.parse_args()
-    
+    print(f"Connecting to A2A endpoint: {args.endpoint}")
     # Create a client
     client = A2AClient(args.endpoint)
     

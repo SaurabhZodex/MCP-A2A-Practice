@@ -84,7 +84,7 @@ logger = logging.getLogger(__name__)
 #     run_server(assistant, port=5000)
 
 
-from python_a2a import A2AClient, Message, TextContent, MessageRole, OpenAIA2AServer, run_server
+from python_a2a import A2AClient, Message, TextContent, MessageRole, run_server, A2AServer
 import re
 import os
 
@@ -131,7 +131,7 @@ class StockAssistant(OllamaA2AServer):
                 ),
                 role=MessageRole.USER
             ))
-            
+            logger.info(f"Ollama response: {ollama_response.content.text}")
             company_name = ollama_response.content.text.strip()
             company_name = company_name.strip('"\'.,')
             logger.info(f"Extracted company name: {company_name}")
@@ -147,6 +147,7 @@ class StockAssistant(OllamaA2AServer):
             # Extract ticker from response
             ticker_match = re.search(r'ticker\s+(?:symbol\s+)?(?:for\s+[\w\s]+\s+)?is\s+([A-Z]{1,5})', 
                                    ticker_response.content.text, re.I)
+            logger.info(f"Ticker match: {ticker_match}")
             if not ticker_match:
                 return Message(
                     content=TextContent(text=f"I couldn't find the ticker symbol for {company_name}."),
@@ -193,8 +194,8 @@ if __name__ == "__main__":
     
     assistant = StockAssistant(
         api_key="api_key",
-        duckduckgo_endpoint="http://localhost:5003/a2a",
-        yfinance_endpoint="http://localhost:5004/a2a"
+        duckduckgo_endpoint="http://localhost:5003/a2a",  # URL of the DuckDuckGo MCP server
+        yfinance_endpoint="http://localhost:5004/a2a"  # URL of the YFinance MCP server
     )
     
     run_server(assistant, port=5000)

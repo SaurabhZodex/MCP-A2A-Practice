@@ -1,119 +1,107 @@
-# calculator_agent.py
+# # Import required libraries
+# from python_a2a.mcp import text_response
+# from mcp.server.fastmcp import FastMCP
 
-import threading
-from python_a2a import A2AServer, Message, TextContent, MessageRole, run_server
-from python_a2a.mcp import FastMCPAgent
-import re
 # Set up logging
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# class CalculatorAgent(A2AServer, FastMCPAgent):
-#     def __init__(self):
-#         A2AServer.__init__(self)
-#         FastMCPAgent.__init__(self, mcp_servers={"calc": "http://localhost:8050/sse"})
+# # Create a new MCP server
+# calculator_mcp = FastMCP(
+#     name="Calculator MCP",
+#     version="1.0.0",
+#     description="Provides mathematical calculation functions",
+#     host="0.0.0.0",  # only used for SSE transport (localhost)
+#     port=8050,  # only used for SSE transport (set this to any port)
+# )
 
-#     async def handle_message_async(self, message):
-#         if message.content.type == "text":
-#             text = message.content.text.lower()
-#             logger.info(f"Received message: {text}")
-#             if not text:
-#                 return Message(
-#                     content=TextContent(text="Please provide a valid arithmetic operation."),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
+# # Define tools using simple decorators with type hints
+# @calculator_mcp.tool()
+# def add(a: float, b: float) -> float:
+#     """Add two numbers together."""
+#     logger.info(f"Adding {a} and {b}")
+#     return a + b
 
-#             try:
-#                 if "add" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "add", a=a, b=b)
-#                 elif "subtract" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "subtract", a=a, b=b)
-#                 elif "multiply" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "multiply", a=a, b=b)
-#                 elif "divide" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "divide", a=a, b=b)
-#                 else:
-#                     return Message(
-#                         content=TextContent(text="Please use add, subtract, multiply, or divide."),
-#                         role=MessageRole.AGENT,
-#                         parent_message_id=message.message_id,
-#                         conversation_id=message.conversation_id
-#                     )
-#                 logger.info(f"Calculated result: {result}")
+# @calculator_mcp.tool()
+# def subtract(a: float, b: float) -> float:
+#     """Subtract b from a."""
+#     logger.info(f"Subtracting {b} from {a}")
+#     return a - b
 
-#                 return Message(
-#                     content=TextContent(text=f"The result is {result}"),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
-#             except Exception as e:
-#                 return Message(
-#                     content=TextContent(text=f"Error: {str(e)}"),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
+# @calculator_mcp.tool()
+# def multiply(a: float, b: float) -> float:
+#     """Multiply two numbers together."""
+#     logger.info(f"Multiplying {a} and {b}")
+#     return a * b
 
-# # Run server
-# run_server(CalculatorAgent(), port=5002)
+# @calculator_mcp.tool()
+# def divide(a: float, b: float) -> float:
+#     """Divide a by b."""
+#     logger.info(f"Dividing {a} by {b}")
+#     if b == 0:
+#         return text_response("Cannot divide by zero")
+#     return a / b
+
+# # Example manual testing (optional)
+# logger.info("Testing add function: %s", add(5, 3))
+# logger.info("Testing subtract function: %s", subtract(10, 4))
+# logger.info("Testing multiply function: %s", multiply(6, 7))
+# logger.info("Testing divide function: %s", divide(20, 5))
+# logger.info("Testing divide by zero: %s", divide(10, 0))
 
 
-# YFinance Agent for stock prices
-class YFinanceAgent(A2AServer, FastMCPAgent):
-    """Agent that provides stock price information."""
-    
-    def __init__(self):
-        A2AServer.__init__(self)
-        FastMCPAgent.__init__(
-            self,
-            mcp_servers={"finance": "http://localhost:5002"}
-        )
-    
-    async def handle_message_async(self, message):
-        if message.content.type == "text":
-            logger.info(f"Received message: {message.content.text}")
-            # Extract ticker from message
-            import re
-            ticker_match = re.search(r"\b([A-Z]{1,5})\b", message.content.text)
-            if ticker_match:
-                ticker = ticker_match.group(1)
-                
-                # Call MCP tool to get price
-                price_info = await self.call_mcp_tool("finance", "get_stock_price", ticker=ticker)
-                
-                if "error" in price_info:
-                    return Message(
-                        content=TextContent(text=f"Error getting price for {ticker}: {price_info['error']}"),
-                        role=MessageRole.AGENT,
-                        parent_message_id=message.message_id,
-                        conversation_id=message.conversation_id
-                    )
-                
-                return Message(
-                    content=TextContent(
-                        text=f"{ticker} is currently trading at {price_info['price']:.2f} {price_info['currency']}."
-                    ),
-                    role=MessageRole.AGENT,
-                    parent_message_id=message.message_id,
-                    conversation_id=message.conversation_id
-                )
+# # Start the MCP server
+# logger.info("Calculator MCP server is running on http://0.0.0.0:8050")
+# calculator_mcp.run(transport="sse")
+
+
+# Import all required libraries
+from python_a2a.mcp import FastMCP, text_response
+import threading
+import requests
+import re
+import yfinance as yf
+
+# YFinance MCP Server for stock price data
+yfinance_mcp = FastMCP(
+    name="YFinance MCP",
+    version="1.0.0",
+    description="Stock market data tools"
+)
+
+@yfinance_mcp.tool()
+def get_stock_price(ticker: str) -> dict:
+    """Get current stock price for a given ticker symbol."""
+    try:
+        # Get stock data
+        logger.info(f"Fetching stock data for ticker: {ticker}")
+        stock = yf.Ticker(ticker)
+        data = stock.history(period="1d")
         
-        # Handle other message types or errors
-        return Message(
-            content=TextContent(text="I can provide stock price information for ticker symbols."),
-            role=MessageRole.AGENT,
-            parent_message_id=message.message_id,
-            conversation_id=message.conversation_id
-        )
+        if data.empty:
+            return {"error": f"No data found for ticker {ticker}"}
+        
+        # Extract the price
+        price = data['Close'].iloc[-1]
+        
+        return {
+            "ticker": ticker,
+            "price": price,
+            "currency": "USD",
+            "timestamp": data.index[-1].strftime('%Y-%m-%d %H:%M:%S')
+        }
+    except Exception as e:
+        return {"error": f"Error fetching stock data: {str(e)}"}
 
 
-logger.info("YFinance MCP Agent is running on http://0.0.0.0:5004")
-run_server(YFinanceAgent(), port=5004)
+# Test the YFinance stock price lookup
+logger.info("\nTesting stock price lookup:")
+tickers = ["AAPL", "MSFT", "AMZN"]
+for ticker in tickers:
+    price_data = get_stock_price(ticker)
+    logger.info(f"{ticker} price data: {price_data}")
+
+# For Jupyter Notebook, use threads to run both servers non-blocking
+logger.info("YFinance MCP server is running on http://0.0.0.0:5002")
+yfinance_mcp.run(host="0.0.0.0", port=5002)
