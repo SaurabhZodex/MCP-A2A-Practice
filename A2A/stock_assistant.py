@@ -194,8 +194,8 @@ if __name__ == "__main__":
     
     assistant = StockAssistant(
         api_key="api_key",
-        duckduckgo_endpoint="http://127.0.0.1:5003/",  # URL of the DuckDuckGo MCP server
-        yfinance_endpoint="http://127.0.0.1:5004/"  # URL of the YFinance MCP server
+        duckduckgo_endpoint="http://127.0.0.1:5003/a2a",  # URL of the DuckDuckGo MCP server
+        yfinance_endpoint="http://127.0.0.1:5004/a2a"  # URL of the YFinance MCP server
     )
     
     run_server(assistant, port=5000)

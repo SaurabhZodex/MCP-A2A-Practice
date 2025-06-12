@@ -1,6 +1,6 @@
 # calculator_agent.py
 import threading
-from python_a2a import A2AServer, Message, TextContent, MessageRole, run_server
+from python_a2a import A2AServer, Message, TextContent, MessageRole, run_server, A2AClient
 from python_a2a.mcp import FastMCPAgent
 import re
 # Set up logging
