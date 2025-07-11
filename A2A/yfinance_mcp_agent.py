@@ -1,120 +1,95 @@
-# calculator_agent.py
-
-import threading
-from python_a2a import A2AServer, Message, TextContent, MessageRole, run_server
-from python_a2a.mcp import FastMCPAgent
-import re
+# pricing_mcp_agent.py
+import asyncio
+import json
+from python_a2a import A2AServer, Message, TextContent, MessageRole, run_server, A2AClient
+from python_a2a.mcp import FastMCPAgent, A2AMCPAgent
+import nest_asyncio
+from mcp import ClientSession
+from mcp.client.sse import sse_client
 # Set up logging
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# class CalculatorAgent(A2AServer, FastMCPAgent):
-#     def __init__(self):
-#         A2AServer.__init__(self)
-#         FastMCPAgent.__init__(self, mcp_servers={"calc": "http://localhost:8050/sse"})
+nest_asyncio.apply()  # Needed to run interactive python
+async def pricing_main(cloud_name: str, filter: str):
+    # Connect to the server using SSE
+    async with sse_client("http://localhost:8085/sse") as (read_stream, write_stream):
+        async with ClientSession(read_stream, write_stream) as session:
+            # Initialize the connection
+            await session.initialize()
 
-#     async def handle_message_async(self, message):
-#         if message.content.type == "text":
-#             text = message.content.text.lower()
-#             logger.info(f"Received message: {text}")
-#             if not text:
-#                 return Message(
-#                     content=TextContent(text="Please provide a valid arithmetic operation."),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
+            # List available tools
+            tools_result = await session.list_tools()
+            logger.info("Available tools:")
+            for tool in tools_result.tools:
+                logger.info(f"  - {tool.name}: {tool.description}")
 
-#             try:
-#                 if "add" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "add", a=a, b=b)
-#                 elif "subtract" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "subtract", a=a, b=b)
-#                 elif "multiply" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "multiply", a=a, b=b)
-#                 elif "divide" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "divide", a=a, b=b)
-#                 else:
-#                     return Message(
-#                         content=TextContent(text="Please use add, subtract, multiply, or divide."),
-#                         role=MessageRole.AGENT,
-#                         parent_message_id=message.message_id,
-#                         conversation_id=message.conversation_id
-#                     )
-#                 logger.info(f"Calculated result: {result}")
+            # Call our calculator tool
+            result = await session.call_tool("get_cloud_price", arguments={"cloud_name": cloud_name, "filter": filter, })
+            return result.content[0].text
+        
 
-#                 return Message(
-#                     content=TextContent(text=f"The result is {result}"),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
-#             except Exception as e:
-#                 return Message(
-#                     content=TextContent(text=f"Error: {str(e)}"),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
+# if __name__ == "__main__":
+#     result = asyncio.run(pricing_main("((meterName eq 'Standard Uptime SLA') or (serviceFamily eq 'Compute' and meterName eq 'D16as v4')) and location eq 'US East'"))
+#     logger.info(f"Result: {result}\n")
 
-# # Run server
-# run_server(CalculatorAgent(), port=5002)
-
-
-# YFinance Agent for stock prices
-class YFinanceAgent(A2AServer, FastMCPAgent):
-    """Agent that provides stock price information."""
+# Pricing Agent for cloud prices
+class PricingAgent(A2AServer, FastMCPAgent):
+    """Agent that provides cloud price information."""
     
     def __init__(self):
         A2AServer.__init__(self)
         FastMCPAgent.__init__(
             self,
-            mcp_servers={"finance": "http://localhost:5002"}
+            mcp_servers={"pricing": "http://localhost:8085"}
         )
-        logger.info("YFinance MCP Agent initialized with finance server.")
-    
-    async def handle_message_async(self, message):
+        logger.info("Pricing MCP Agent initialized with pricing server.")
+
+    def handle_message(self, message):
         if message.content.type == "text":
             logger.info(f"Received message: {message.content.text}")
-            # Extract ticker from message
-            import re
-            ticker_match = re.search(r"\b([A-Z]{1,5})\b", message.content.text)
-            if ticker_match:
-                ticker = ticker_match.group(1)
-                
-                # Call MCP tool to get price
-                price_info = await self.call_mcp_tool("finance", "get_stock_price", ticker=ticker)
-                
-                if "error" in price_info:
-                    return Message(
-                        content=TextContent(text=f"Error getting price for {ticker}: {price_info['error']}"),
-                        role=MessageRole.AGENT,
-                        parent_message_id=message.message_id,
-                        conversation_id=message.conversation_id
-                    )
-                
-                return Message(
-                    content=TextContent(
-                        text=f"{ticker} is currently trading at {price_info['price']:.2f} {price_info['currency']}."
-                    ),
-                    role=MessageRole.AGENT,
-                    parent_message_id=message.message_id,
-                    conversation_id=message.conversation_id
-                )
-        
+            filter = message.content.text.strip()
+            logger.info(f"Fetching cloud price data for filter: {filter}")
+
+            # Call MCP tool to get price
+            # price_info = await self.call_mcp_tool("pricing", "get_cloud_price", cloud_name=cloud_name, "filter": filter, )
+            pricing_loaded_json = json.loads(message.content.text)
+            price_info = asyncio.run(pricing_main(pricing_loaded_json["cloud_name"], pricing_loaded_json["filter"]))
+
+            return Message(
+                content=TextContent(
+                    text=price_info
+                ),
+                role=MessageRole.AGENT,
+                parent_message_id=message.message_id,
+                conversation_id=message.conversation_id
+            )
+    
         # Handle other message types or errors
         return Message(
-            content=TextContent(text="I can provide stock price information for ticker symbols."),
+            content=TextContent(text="I can provide cloud price information for filters."),
             role=MessageRole.AGENT,
             parent_message_id=message.message_id,
             conversation_id=message.conversation_id
         )
 
+import asyncio
+price = PricingAgent()
+data = {
+    "cloud_name": "azure cloud",
+    "filter": "((meterName eq 'Standard Uptime SLA') or (serviceFamily eq 'Compute' and meterName eq 'D16as v4')) and location eq 'US East'"
+}
+json_str = json.dumps(data)
 
-logger.info("YFinance MCP Agent is running on http://0.0.0.0:5004/")
-run_server(YFinanceAgent(), port=5004)
+response = price.handle_message(
+    Message(
+        content=TextContent(text=json_str),
+        role=MessageRole.USER,
+        message_id="test-message-id",
+        conversation_id="test-conversation-id"
+    ))
+logger.info(f"Response: {response}\n")
+
+logger.info("Pricing MCP Agent is running on http://0.0.0.0:8084/")
+run_server(PricingAgent(), port=8084)

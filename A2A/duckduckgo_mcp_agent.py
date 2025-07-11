@@ -1,97 +1,60 @@
-# calculator_agent.py
-import threading
+# db_mcp_agent.py
+import asyncio
+import json
 from python_a2a import A2AServer, Message, TextContent, MessageRole, run_server, A2AClient
-from python_a2a.mcp import FastMCPAgent
-import re
+from python_a2a.mcp import FastMCPAgent, A2AMCPAgent
+import nest_asyncio
+from mcp import ClientSession
+from mcp.client.sse import sse_client
 # Set up logging
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# class CalculatorAgent(A2AServer, FastMCPAgent):
-#     def __init__(self):
-#         A2AServer.__init__(self)
-#         FastMCPAgent.__init__(self, mcp_servers={"calc": "http://localhost:8050/sse"})
+nest_asyncio.apply()  # Needed to run interactive python
+async def db_main(cloud_name: str, service_name: str):
+    # Connect to the server using SSE
+    async with sse_client("http://localhost:8083/sse") as (read_stream, write_stream):
+        async with ClientSession(read_stream, write_stream) as session:
+            # Initialize the connection
+            await session.initialize()
 
-#     async def handle_message_async(self, message):
-#         if message.content.type == "text":
-#             text = message.content.text.lower()
-#             logger.info(f"Received message: {text}")
-#             if not text:
-#                 return Message(
-#                     content=TextContent(text="Please provide a valid arithmetic operation."),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
+            # # List available tools
+            # tools_result = await session.list_tools()
+            # logger.info("Available tools:")
+            # for tool in tools_result.tools:
+            #     logger.info(f"  - {tool.name}: {tool.description}")
 
-#             try:
-#                 if "add" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "add", a=a, b=b)
-#                 elif "subtract" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "subtract", a=a, b=b)
-#                 elif "multiply" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "multiply", a=a, b=b)
-#                 elif "divide" in text:
-#                     a, b = map(float, re.findall(r"[-+]?\d*\.\d+|\d+", text))
-#                     result = await self.call_mcp_tool("calc", "divide", a=a, b=b)
-#                 else:
-#                     return Message(
-#                         content=TextContent(text="Please use add, subtract, multiply, or divide."),
-#                         role=MessageRole.AGENT,
-#                         parent_message_id=message.message_id,
-#                         conversation_id=message.conversation_id
-#                     )
-#                 logger.info(f"Calculated result: {result}")
+            # Call our calculator tool
+            result = await session.call_tool("search_api_filter", arguments={"cloud_name": cloud_name, "service_name": service_name})
+            return result.content[0].text
 
-#                 return Message(
-#                     content=TextContent(text=f"The result is {result}"),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
-#             except Exception as e:
-#                 return Message(
-#                     content=TextContent(text=f"Error: {str(e)}"),
-#                     role=MessageRole.AGENT,
-#                     parent_message_id=message.message_id,
-#                     conversation_id=message.conversation_id
-#                 )
+# if __name__ == "__main__":
+#     result = asyncio.run(db_main("Azure Cloud"))
+#     logger.info(f"Result: {result}\n")
 
-# # Run server
-# run_server(CalculatorAgent(), port=5002)
-
-# DuckDuckGo Agent for ticker lookup
-class DuckDuckGoAgent(A2AServer, FastMCPAgent):
-    """Agent that finds stock ticker symbols."""
-    
+# DB Agent for ticker lookup
+class DBAgent(A2AServer, FastMCPAgent):
+    """Agent that finds API filter."""
     def __init__(self):
         A2AServer.__init__(self)
         FastMCPAgent.__init__(
             self,
-            mcp_servers={"search": "http://localhost:5001"}
+            mcp_servers={"filter": "http://localhost:8083"}
         )
-        logger.info("DuckDuckGo MCP Agent initialized with search server.")
-    
-    async def handle_message_async(self, message):
+        logger.info("DB MCP Agent initialized with search server.\n")
+
+    def handle_message(self, message):
         if message.content.type == "text":
             logger.info(f"Received message: {message.content.text}")
-            # Extract company name from message
-            company_match = re.search(r"ticker\s+(?:for|of)\s+([A-Za-z\s]+)", message.content.text, re.I)
-            if company_match:
-                company_name = company_match.group(1).strip()
-            else:
-                # Default to using the whole message
-                company_name = message.content.text.strip()
-            
-            # Call MCP tool to lookup ticker
-            ticker = await self.call_mcp_tool("search", "search_ticker", company_name=company_name)
-            
+
+            # Call MCP tool to lookup API filter
+            # api_filter = await self.call_mcp_tool("cloud_name", "search_api_filter", query=message.content.text)
+            db_loaded_json = json.loads(message.content.text)
+            api_filter = asyncio.run(db_main(db_loaded_json["cloud_name"], db_loaded_json["service_name"]))
+
             return Message(
-                content=TextContent(text=f"The ticker symbol for {company_name} is {ticker}."),
+                content=TextContent(text=f"{api_filter}"),
                 role=MessageRole.AGENT,
                 parent_message_id=message.message_id,
                 conversation_id=message.conversation_id
@@ -99,11 +62,27 @@ class DuckDuckGoAgent(A2AServer, FastMCPAgent):
         
         # Handle other message types or errors
         return Message(
-            content=TextContent(text="I can help find ticker symbols for companies."),
+            content=TextContent(text="I can help find API filter for cloud."),
             role=MessageRole.AGENT,
             parent_message_id=message.message_id,
             conversation_id=message.conversation_id
         )
-    
-logger.info("DuckDuckGo MCP Agent is running on http://0.0.0.0:5003/")
-run_server(DuckDuckGoAgent(), port=5003)
+
+import asyncio
+db = DBAgent()
+data = {
+    "cloud_name": "azure cloud",
+    "service_name": "kf+ops"
+}
+json_str = json.dumps(data)
+response = db.handle_message(
+    Message(
+        content=TextContent(text=json_str),
+        role=MessageRole.USER,
+        message_id="test-message-id",
+        conversation_id="test-conversation-id"
+    ))
+logger.info(f"Response: {response}\n")
+
+logger.info("DB MCP Agent is running on http://0.0.0.0:8082/")
+run_server(DBAgent(), port=8082)
